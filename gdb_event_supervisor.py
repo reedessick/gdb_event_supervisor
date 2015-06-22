@@ -1,3 +1,5 @@
+#!/usr/bin/python
+
 usage = "gdb_event_supervisor.py [--options] config.ini"
 description = \
 """
