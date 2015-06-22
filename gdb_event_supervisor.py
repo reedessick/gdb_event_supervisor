@@ -100,7 +100,6 @@ for dt, foo, kwargs, email, description in schedule:
     if foo( gracedb, gdb_id, **kwargs ): ### perform this check. (foo -> True) means the check failed!
         if email:
             os.system( "echo \"action required for GraceDB event : %s\n%s\" | mail -s \"action required for GraceDB event : %s\" %s"%(gdb_id, description, gdb_id, " ".join(email)) )
-            pass ### send email to everyone in email list!
 
         else:
             print "WARNING: check failed but no email recipients specified! No warning messages will be sent!"
