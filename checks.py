@@ -552,7 +552,6 @@ def plot_skymaps( gdb, gdb_id, verbose=False ):
     """
     checks that all FITS files attached to this event have an associated png file (produced by gdb_processor)
     """
-    import re
     if verbose:
         print "%s : plot_skymaps\n\tretrieving log messages"%(gdb_id)
     logs = gdb.logs( gdb_id ).json()['log']
@@ -573,16 +572,22 @@ def plot_skymaps( gdb, gdb_id, verbose=False ):
                 skymap_image_filename = skymapname + '.png'
             if skymap_image_filename in files:
                 if verbose:
-                    print 'success. found {0}.'.format(skymap_image_filename)
+                    print '\tsuccess. found {0}.'.format(skymap_image_filename)
                 values.append(True)
             else:
                 if verbose:
-                    print 'did not find {0}.'.format(skymap_image_filename)
+                    print '\tdid not find {0}.'.format(skymap_image_filename)
                 values.append(False)
     if False in values:
         return True
-    if True in values:
-        return False
+    else:
+        if len(values)==0:
+            if verbose:
+                print '\teither no skymaps for event or approval processor not logging messages'
+            return True
+        else:
+            return False
+
 #=================================================
 # tasks managed by approval_processor
 #=================================================
