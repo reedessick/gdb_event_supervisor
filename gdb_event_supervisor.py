@@ -16,7 +16,6 @@ import time
 import ConfigParser
 import json
 from ligo.gracedb.rest import GraceDb
-import re
 
 import checks
  
