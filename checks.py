@@ -143,6 +143,33 @@ def config_to_schedule( config, event_type, verbose=False ):
 
         schedule.append( (dt, lalinference_finish, kwargs, checks['lalinference_finish'].split(), "lalinference_finish") )
 
+    #=== externaltriggers
+    if checks.has_key("externaltriggers_search"):
+        if verbose:
+            print "\tcheck externaltriggers_search"
+        dt = config.getfloat("externaltriggers_search", "dt")
+        kwargs = {'verbose':verbose}
+
+        schedule.append( (dt, externaltriggers_search, kwargs, checks['externaltriggers_search'].split(), "externaltriggers_search") )
+
+    #=== unblindinjections
+    if checks.has_key("unblindinjections_search"):
+        if verbose:
+            print "\tcheck unblindinjections_search"
+        dt = config.getfloat("unblindinjections_search", "dt")
+        kwargs = {'verbose':verbose}
+
+        schedule.append( (dt, unblindinjections_search, kwargs, checks['unblindinjections_search'].split(), "unblindinjections_search") )
+
+    #=== plot_skymaps
+    if checks.has_key("plot_skymaps"):
+        if verbose:
+            print "\tcheck plot_skymaps"
+        dt = config.getfloat("plot_skymaps", "dt")
+        kwargs = {'verbose':verbose}
+
+        schedule.append( (dt, plot_skymaps, kwargs, checks['plot_skymaps'].split(), "plot_skymaps") )
+
     #=== else?
 #    print "WARNING: there are many checks that are not yet implemented!"
 
@@ -182,7 +209,7 @@ def cwb_eventcreation( gdb, gdb_id, verbose=False, fits="skyprobcc.fits.gz" ):
             break
 
     if verbose:
-        print "\tsuccess : ", not (fit and pe)
+        print "\taction required : ", not (fit and pe)
 
     return not (fit and pe)
 
@@ -209,7 +236,7 @@ def olib_eventcreation( gdb, gdb_id, verbose=False ):
             break
 
     if verbose:
-        print "\tsuccess : ", not (prelim)
+        print "\taction required : ", not (prelim)
     return not (prelim)
 
 def gstlal_eventcreation( gdb, gdb_id, verbose=False ):
@@ -239,7 +266,7 @@ def gstlal_eventcreation( gdb, gdb_id, verbose=False ):
             break
 
     if verbose:
-        print "\tsuccess : ", not (psd and coinc)
+        print "\taction required : ", not (psd and coinc)
     return not (psd and coinc)
 
 def mbta_eventcreation( gdb, gdb_id, verbose=False ):
@@ -268,7 +295,7 @@ def mbta_eventcreation( gdb, gdb_id, verbose=False ):
             break
 
     if verbose:
-        print "\tsuccess : ", not (psd and coinc)
+        print "\taction required : ", not (psd and coinc)
     return not (psd and coinc)
 
 #=================================================
@@ -347,11 +374,11 @@ def lib_start( gdb, gdb_id, verbose=False ):
         comment = log['comment']
         if "LIB Parameter estimation started." in comment:
             if verbose:
-                print "\tsuccess : False"
+                print "\taction required : False"
             return False
 
     if verbose:
-        print "\tsuccess : True"
+        print "\taction required : True"
 
     return True
 
@@ -369,10 +396,10 @@ def lib_finish( gdb, gdb_id, verbose=False ):
         comment = log['comment']
         if "LIB Parameter estimation finished." in comment:
             if verbose:
-                print "\tsuccess : False"
+                print "\taction required : False"
             return False
     if verbose:
-        print "\tsuccess : True"
+        print "\taction required : True"
     return True
 
 #=================================================
@@ -393,10 +420,10 @@ def bayeswave_start( gdb, gdb_id, verbose=False ):
         comment = log['comment']
         if "BayesWaveBurst launched" in comment:
             if verbose:
-                print "\tsuccess : False"
+                print "\taction required : False"
             return False
     if verbose:
-        print "\tsuccess : True"
+        print "\taction required : True"
     return True
 
 def bayeswave_finish( gdb, gdb_id, verbose=False ):
@@ -413,10 +440,10 @@ def bayeswave_finish( gdb, gdb_id, verbose=False ):
         comment = log['comment']
         if "BWB Follow-up results" in comment:
             if verbose:
-                print "\tsuccess : False"
+                print "\taction required : False"
             return False
     if verbose:
-        print "\tsuccess : True"
+        print "\taction required : True"
     return True
 
 #=================================================
@@ -437,10 +464,10 @@ def bayestar_start( gdb, gdb_id, verbose=False ):
         comment = log['comment']
         if "INFO:BAYESTAR:starting sky localization" in comment:
             if verbose:
-                print "\tsuccess : False"
+                print "\taction required : False"
             return False
     if verbose:
-        print "\tsuccess : True"
+        print "\taction required : True"
     return True
 
 def bayestar_finish( gdb, gdb_id, verbose=False ):
@@ -457,10 +484,10 @@ def bayestar_finish( gdb, gdb_id, verbose=False ):
         comment = log['comment']
         if "INFO:BAYESTAR:sky localization complete" in comment:
             if verbose:
-                print "\tsuccess : False"
+                print "\taction required : False"
             return False
     if verbose:
-        print "\tsuccess : True"
+        print "\taction required : True"
     return True
 
 #=================================================
@@ -495,10 +522,10 @@ def lalinference_finish( gdb, gdb_id, verbose=False ):
         comment = log['comment']
         if "online parameter estimation" in comment:
             if verbose:
-                print "\tsuccess : False"
+                print "\taction required : False"
             return False
     if verbose:
-        print "\tsuccess : True"
+        print "\taction required : True"
     return True
 
 #=================================================
@@ -519,10 +546,10 @@ def externaltriggers_search( gdb, gdb_id, verbose=False ):
         comment = log['comment']
         if "Coincidence search complete" in comment:
             if verbose:
-                print "\tsuccess : False"
+                print "\taction required : False"
             return False
     if verbose:
-        print "\tsuccess : True"
+        print "\taction required : True"
     return True
 
 def unblindinjections_search( gdb, gdb_id, verbose=False ):
@@ -539,13 +566,13 @@ def unblindinjections_search( gdb, gdb_id, verbose=False ):
         comment = log['comment']
         if ("No unblind injections in window" in comment):
             if verbose:
-                print "\tsuccess : False"
+                print "\taction required : False"
             return False
 
-    print "WARNING: we do not currently know how to parse out statements for when there is an unblind injection...proceeding assuming everything is kosher"
+    print "\tWARNING: we do not currently know how to parse out statements when there is an unblind injection...proceeding assuming everything is kosher"
 
     if verbose:
-        print "\tsuccess : False"
+        print "\taction required : False"
     return False
 
 def plot_skymaps( gdb, gdb_id, verbose=False ):
@@ -553,40 +580,29 @@ def plot_skymaps( gdb, gdb_id, verbose=False ):
     checks that all FITS files attached to this event have an associated png file (produced by gdb_processor)
     """
     if verbose:
-        print "%s : plot_skymaps\n\tretrieving log messages"%(gdb_id)
-    logs = gdb.logs( gdb_id ).json()['log']
-    files = gdb.files( gdb_id ).json().keys()
-    values = []
+        print "%s : plot_skymaps\n\tretrieving event files"%(gdb_id)
+    files = gdb.files( gdb_id ).json().keys() ### we really just care about the filenames
+
     if verbose:
-        print "\tparsing log\n\tgot event files"
-    for log in logs:
-        comment = log['comment']
-        if ("Last skymap submitted was" in comment):
-            skymapinfo = re.findall(r'Last skymap submitted was (\S+)[.]fits', comment)
-            skymap_filename = skymapinfo[0]
-            if '.' in skymap_filename:
-                skymapname = re.findall(r'(\S+)[.](\d)', skymap_filename)[0][0]
-                skymap_image_filename = skymapname + '.png'
+        print "\tidentifying all FITS files"
+    fitsfiles = [ filename for filename in files if filename.endswith(".fits") or filename.endswith(".fits.gz") ]
+
+    if verbose:
+        print "\tchecking for corresponding png figures"
+    result = []
+    for fitsfile in fitsfiles:
+        if fitsfile.endswith(".gz"):
+            fitsfile = fitsfile[:-3]
+        pngfile = "%spng"%(fitsfile[:-3])
+        result.append( pngfile in files )
+
+    if verbose:
+        for r, fitsfile in zip(result, fitsfiles):
+            if r:
+                print "\tWARNING: no png file found for FITS : %s"%(fitsfile)
             else:
-                skymapname = skymap_filename
-                skymap_image_filename = skymapname + '.png'
-            if skymap_image_filename in files:
-                if verbose:
-                    print '\tsuccess. found {0}.'.format(skymap_image_filename)
-                values.append(True)
-            else:
-                if verbose:
-                    print '\tdid not find {0}.'.format(skymap_image_filename)
-                values.append(False)
-    if False in values:
-        return True
-    else:
-        if len(values)==0:
-            if verbose:
-                print '\teither no skymaps for event or approval processor not logging messages'
-            return True
-        else:
-            return False
+                print "\tpng file found for FITS : %s"%(fitsfile)
+    return sum(result) > 0
 
 #=================================================
 # tasks managed by approval_processor
