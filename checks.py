@@ -170,8 +170,14 @@ def config_to_schedule( config, event_type, verbose=False ):
 
         schedule.append( (dt, plot_skymaps, kwargs, checks['plot_skymaps'].split(), "plot_skymaps") )
 
-    #=== else?
-#    print "WARNING: there are many checks that are not yet implemented!"
+    #=== json_skymaps
+    if checks.has_key("json_skymaps"):
+        if verbose:
+            print "\tcheck json_skymaps"
+        dt = config.getfloat("json_skymaps", "dt")
+        kwargs = {'verbose':verbose}
+
+        schedule.append( (dt, json_skymaps, kwargs, checks['json_skymaps'].split(), "json_skymaps") )
 
     ### order according to dt, smallest to largest
     schedule.sort(key=lambda l:l[0])
@@ -322,11 +328,15 @@ def idq_start( gdb, gdb_id, ifos=['H','L'], verbose=False ):
                     result[ind] = 0
     
     if verbose:
+        action_required = False
         for r, ifo in zip(result, ifos):
             if r:
                 print "\tWARNING: no idq_start statement found for ifo : %s"%ifo
+                action_required = True
             else:
                 print "\tidq_start statement found for ifo : %s"%ifo
+        print "\taction required : ", action_required 
+
     return sum(result) > 0
 
 def idq_finish( gdb, gdb_id, ifos=['H','L'], verbose=False ):
@@ -349,11 +359,15 @@ def idq_finish( gdb, gdb_id, ifos=['H','L'], verbose=False ):
                     result[ind] = 0
 
     if verbose:
+        action_required = False
         for r, ifo in zip(result, ifos):
             if r:
                 print "\tWARNING: no idq_finish statement found for ifo : %s"%ifo
+                action_required = True
             else:
                 print "\tidq_finish statement found for ifo : %s"%ifo
+        print "\taction required : ", action_required
+
     return sum(result) > 0
 
 #=================================================
@@ -591,18 +605,60 @@ def plot_skymaps( gdb, gdb_id, verbose=False ):
         print "\tchecking for corresponding png figures"
     result = []
     for fitsfile in fitsfiles:
-        if fitsfile.endswith(".gz"):
-            fitsfile = fitsfile[:-3]
-        pngfile = "%spng"%(fitsfile[:-3])
-        result.append( pngfile in files )
+#        if fitsfile.endswith(".gz"):
+#            fitsfile = fitsfile[:-3]
+#        pngfile = "%spng"%(fitsfile[:-4])
+        pngfile = "%s.png"%(fitsfile.split(".")[0])
+        result.append( (not (pngfile in files), pngfile, fitsfile) )
 
     if verbose:
-        for r, fitsfile in zip(result, fitsfiles):
+        action_required = False
+        for r, pngfile, fitsfile in result:
             if r:
-                print "\tWARNING: no png file found for FITS : %s"%(fitsfile)
+                print "\tWARNING: no png file found for FITS : %s <-> %s"%(fitsfile, pngfile)
+                action_required = True
             else:
-                print "\tpng file found for FITS : %s"%(fitsfile)
-    return sum(result) > 0
+                print "\tpng file found for FITS : %s <-> %s"%(fitsfile, pngfile)
+        print "\taction required : ", action_required
+
+    return sum([r[0] for r in result]) > 0
+
+#=================================================
+# tasks managed by skyviewer and friends
+#=================================================
+
+def json_skymaps( gdb, gdb_id, verbose=False ):
+    """
+    checks that all FITS files attached to this event have an associated json file
+    """
+    if verbose:
+        print "%s : json_skymaps\n\tretrieving event files"%(gdb_id)
+    files = gdb.files( gdb_id ).json().keys() ### get just the names, not the urls
+
+    if verbose:
+        print "\tidentifying all FITS files"
+    fitsfiles = [filename for filename in files if filename.endswith(".fits") or filename.endswith(".fits.gz") ]
+
+    if verbose:
+        print "\tchecking for corresponding json files"
+    result = []
+    for fitsfile in fitsfiles:
+        if fitsfile.endswith(".gz"):
+            fitsfile = fitsfile[:-3]
+        jsonfile = "%sjson"%(fitsfile[:-4])
+        result.append( (not (jsonfile in files), jsonfile, fitsfile) )
+
+    if verbose:
+        action_required = False
+        for r, jsonfile, fitsfile in result:
+            if r:
+                print "\tWARNING: no json file found for FITS : %s <-> %s"%(fitsfile, jsonfile)
+                action_required = True
+            else:
+                print "\tjson file found for FITS : %s <-> %s"%(fitsfile, jsonfile)
+        print "\taction required : ", action_required
+
+    return sum([r[0] for r in result]) > 0
 
 #=================================================
 # tasks managed by approval_processor
