@@ -27,6 +27,8 @@ parser = OptionParser(usage=usage, description=description)
 
 parser.add_option('-v', '--verbose', default=False, action="store_true")
 
+parser.add_option('-g', '--graceid', default=False, type="string", help="a graceid for which we perform the scheduled checks. If not supplied, we parse this information from an lvalert assumed to be in STDIN")
+
 opts, args = parser.parse_args()
 
 if len(args)!=1:
@@ -35,20 +37,26 @@ configfile = args[0]
 
 #=================================================
 
-### parse the alert
-alert_message = sys.stdin.read()
-if opts.verbose:
-    print "alert received :\n%s"%alert_message
-
-alert = json.loads(alert_message)
-if alert["alert_type"] != "new":
+if opts.graceid: ### user defines the graceid, no need to reference an lvaler
+    gdb_id = opts.graceid
     if opts.verbose:
-        print "alert_type!=\"new\", skipping"
-    sys.exit(0) ### not a new alert
+        print "processing event : %s"%gdb_id
 
-gdb_id = alert['uid']
-if opts.verbose:
-    print "New event detectected : %s"%gdb_id
+else: ### parse the alert to determine gdb_id
+    ### parse the alert
+    alert_message = sys.stdin.read()
+    if opts.verbose:
+        print "alert received :\n%s"%alert_message
+
+    alert = json.loads(alert_message)
+    if alert["alert_type"] != "new":
+        if opts.verbose:
+            print "alert_type!=\"new\", skipping"
+        sys.exit(0) ### not a new alert
+
+    gdb_id = alert['uid']
+    if opts.verbose:
+        print "New event detectected : %s"%gdb_id
 
 ### set up the connection to gracedb
 gracedb = GraceDb()
@@ -88,12 +96,12 @@ schedule = checks.config_to_schedule( config, event_type, verbose=opts.verbose )
 ### perform the scheduled checks
 if opts.verbose:
     print "performing schedule"
-to = time.time() ### start time of our checking proceedures
-for dt, foo, kwargs, email, description in schedule:
+#to = time.time() ### start time of our checking proceedures
+to = time.mktime(time.strptime(gdb_entry['created'], '%Y-%m-%d %H:%M:%S %Z')) ### parse creation time from GraceDB
 
+for dt, foo, kwargs, email, description in schedule:
     ### check current time stamp
-    t = time.time()
-    wait = dt - (t-to)
+    wait = dt - (time.time()-to)
     if wait > 0:
         if opts.verbose:
             print "\nwaiting %.3f seconds before performing : %s\n"%(wait, description)
@@ -105,26 +113,4 @@ for dt, foo, kwargs, email, description in schedule:
 
         else:
             print "WARNING: check failed but no email recipients specified! No warning messages will be sent!"
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
