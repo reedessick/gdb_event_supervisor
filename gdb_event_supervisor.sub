@@ -1,0 +1,10 @@
+universe = vanilla
+executable = /home/reed.essick/gdb_processor/gdb_event_supervisor.py
+getenv = True
+log = $(logdir)/gdb_event_supervisor_$(graceid).log
+output = $(logdir)/gdb_event_supervisor_$(graceid).out
+error = $(logdir)/gdb_event_supervisor_$(graceid).err
+notification = never
+arguments = " --config $(config) --graceid $(graceid) "
+queue 1
+
