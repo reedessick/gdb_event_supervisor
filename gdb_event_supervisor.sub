@@ -5,6 +5,6 @@ log = $(logdir)/gdb_event_supervisor_$(graceid).log
 output = $(logdir)/gdb_event_supervisor_$(graceid).out
 error = $(logdir)/gdb_event_supervisor_$(graceid).err
 notification = never
-arguments = " --config $(config) --graceid $(graceid) "
+arguments = " --verbose --graceid $(graceid) $(config) "
 queue 1
 
