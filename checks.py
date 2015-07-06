@@ -1,6 +1,12 @@
 description = """ a module for performing checks of GraceDB triggered processes. NOTE: the "check" functions return TRUE if the check failed (action is needed) and FALSE if everything is fine """
 
+#=================================================
+
 import numpy as np
+
+#=================================================
+
+eventcreation_dt = 10
 
 #=================================================
 # set up schedule of checks
@@ -31,7 +37,7 @@ def config_to_schedule( config, event_type, verbose=False ):
     if pipeline == "cwb":
         if verbose:
             print "\tcWB event"
-        dt = 10
+        dt = eventcreation_dt
         kwargs = {'verbose':verbose}
 
         schedule.append( (dt, cwb_eventcreation, kwargs, checks['eventcreation'].split(), "cwb_eventcreation") )
@@ -39,7 +45,7 @@ def config_to_schedule( config, event_type, verbose=False ):
     elif pipeline == "olib":
         if verbose:
             print "\toLIB event"
-        dt = 10
+        dt = eventcreation_dt
         kwargs = {'verbose':verbose}
 
         schedule.append( (dt, olib_eventcreation, kwargs, checks['eventcreation'].split(), "olib_eventcreation") )
@@ -47,7 +53,7 @@ def config_to_schedule( config, event_type, verbose=False ):
     elif pipeline == "gstlal":
         if verbose:
             print "\tgstlal event"
-        dt = 10
+        dt = eventcreation_dt
         kwargs = {'verbose':verbose}
 
         schedule.append( (dt, gstlal_eventcreation, kwargs, checks['eventcreation'].split(), "gstlal_eventcreation") )
@@ -55,7 +61,7 @@ def config_to_schedule( config, event_type, verbose=False ):
     elif pipeline == "mbtaonline":
         if verbose:
             print "\tMBTA event"
-        dt = 10
+        dt = eventcreation_dt
         kwargs = {'verbose':verbose}
 
         schedule.append( (dt, mbta_eventcreation, kwargs, checks['eventcreation'].split(), "mbta_eventcreation") )
@@ -64,7 +70,7 @@ def config_to_schedule( config, event_type, verbose=False ):
     if checks.has_key("local_rates"):
         if verbose:
             print "\tcheck local_rates"
-        dt = 0
+        dt = config.getfloat("local_rates", "dt")
         kwargs = {"rate_thr":config.getfloat("local_rates","rate") , "window":config.getfloat("local_rates","window"), "verbose":verbose}
 
         schedule.append( (dt, local_rates, kwargs, checks["local_rates"].split(), "local_rates") )
@@ -201,8 +207,9 @@ def config_to_schedule( config, event_type, verbose=False ):
 
 def local_rates( gdb, gdb_id, verbose=False, window=5.0, rate_thr=5.0, event_type=None ):
     """
-    checks that the local rate of events does not exceed the threshold (rate_thr) over the window
+    checks that the local rate of events (around the event gpstime) does not exceed the threshold (rate_thr) over the window
     performs this check for ALL event types and for this event type in particular
+        both checks must pass for no action to be required
     """
     if verbose:
         print "%s : local_rates"%(gdb_id)
