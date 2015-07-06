@@ -28,6 +28,7 @@ parser = OptionParser(usage=usage, description=description)
 parser.add_option('-v', '--verbose', default=False, action="store_true")
 
 parser.add_option('-g', '--graceid', default=False, type="string", help="a graceid for which we perform the scheduled checks. If not supplied, we parse this information from an lvalert assumed to be in STDIN")
+parser.add_option('-G', '--gracedb_url', default=None, type="string")
 
 opts, args = parser.parse_args()
 
@@ -59,7 +60,14 @@ else: ### parse the alert to determine gdb_id
         print "New event detectected : %s"%gdb_id
 
 ### set up the connection to gracedb
-gracedb = GraceDb()
+if opts.gracedb_url:
+    if opts.verbose:
+        print "conecting to GraceDb : %s"%(opts.gracedb_url)
+    gracedb = GraceDb( opts.gracedb_url )
+else:
+    if opts.verbose:
+        print "connecting to GraceDb"
+    gracedb = GraceDb()
 
 try:
     gdb_entry = json.loads(gracedb.event(gdb_id).read())
