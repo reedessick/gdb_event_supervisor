@@ -1,5 +1,7 @@
 description = """ a module for performing checks of GraceDB triggered processes. NOTE: the "check" functions return TRUE if the check failed (action is needed) and FALSE if everything is fine """
 
+import numpy as np
+
 #=================================================
 # set up schedule of checks
 #=================================================
@@ -57,6 +59,15 @@ def config_to_schedule( config, event_type, verbose=False ):
         kwargs = {'verbose':verbose}
 
         schedule.append( (dt, mbta_eventcreation, kwargs, checks['eventcreation'].split(), "mbta_eventcreation") )
+
+    #=== local properties of event streams
+    if checks.has_key("local_rates"):
+        if verbose:
+            print "\tcheck local_rates"
+        dt = 0
+        kwargs = {"rate_thr":config.getfloat("local_rates","rate") , "window":config.getfloat("local_rates","window"), "verbose":verbose}
+
+        schedule.append( (dt, local_rates, kwargs, checks["local_rates"].split(), "local_rates") )
 
     #=== idq
     if checks.has_key("idq_start"):
@@ -183,6 +194,80 @@ def config_to_schedule( config, event_type, verbose=False ):
     schedule.sort(key=lambda l:l[0])
 
     return schedule
+
+#=================================================
+# methods that check the local properties of the stream of events submitted to GraceDB
+#=================================================
+
+def local_rates( gdb, gdb_id, verbose=False, window=5.0, rate_thr=5.0, event_type=None ):
+    """
+    checks that the local rate of events does not exceed the threshold (rate_thr) over the window
+    performs this check for ALL event types and for this event type in particular
+    """
+    if verbose:
+        print "%s : local_rates"%(gdb_id)
+
+    if window*rate_thr < 1:
+        print "\tWARNING: window*rate_thr < 1. We will always require action for this check"
+
+    ### get this event
+    if verbose:
+        print "\tretrieving information about this event:"
+    gdb_entry = gdb.event( gdb_id ).json()
+
+    ### get event time
+    event_time = float(gdb_entry['gpstime'])
+    if verbose:
+        print "\t\tgpstime : %.6f"%(event_time)
+
+    ### get event type
+    group = gdb_entry['group']
+    pipeline = gdb_entry['pipeline']
+    if gdb_entry.has_key('search'):
+        search = gdb_entry['search']
+        event_type = "%s_%s_%s"%(group, pipeline, search)
+    else:
+        search = None
+        event_type = "%s_%s"%(group, pipeline)
+    if verbose:
+        print "\t\tevent_type : %s"%(event_type)
+
+    ### query for neighbors in (t-window, t+window), excluding this event
+    if verbose:
+        print "\tretrieving neighbors within [%.6f-%.6f, %.6f+%6f]"%(event_time, window, event_time, window)
+    gdb_entries = [ entry for entry in gdb.events( "%d..%d"%(np.floor(event_time-window), np.ceil(event_time+window)) ) if entry['graceid'] != gdb_id ]
+
+    ### count numbers of events
+    if verbose:
+        print "\tcounting events:"
+    nevents = 1
+    nevents_type = 1
+    for entry in gdb_entries:
+        nevents += 1
+        if entry.has_key('search'):
+            e_type = "%s_%s_%s"%(entry['group'], entry['pipeline'], entry['search'])
+        else:
+            e_type = "%s_%s"%(entry['group'], entry['pipeline'])
+        event_type += (e_type == event_type) ### increment if true
+
+    if verbose:
+        print "\t\t%d %s\n\t\t%d total"%(nevents_type, event_type, nevents)
+
+    ### check rates
+    count_thr = 2*window*rate_thr
+    if (nevents_type) > count_thr:
+        if verbose:
+            print "\tevent rate higher than %.3f observed within [%.6f-%.6f, %.6f+%.6f] for event type : %s\n\taction_required : True"%(rate_thr, event_time, window, event_time, window, event_type)
+        return True
+
+    elif (nevents) > count_thr: 
+        if verbose:
+            print "\tevent rate higher than %.3f observed within [%.6f-%.6f, %.6f+%.6f] for all event types\n\taction_required : True"%(rate_thr, event_time, window, event_time, window)
+        return True
+
+    if verbose:
+        print "\taction_required : False"
+    return False
 
 #=================================================
 # methods that check that an event was created successfully and all expected meta-data/information has been uploaded
