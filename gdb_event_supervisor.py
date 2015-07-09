@@ -30,6 +30,8 @@ parser.add_option('-v', '--verbose', default=False, action="store_true")
 parser.add_option('-g', '--graceid', default=False, type="string", help="a graceid for which we perform the scheduled checks. If not supplied, we parse this information from an lvalert assumed to be in STDIN")
 parser.add_option('-G', '--gracedb_url', default=None, type="string")
 
+parser.add_option('-a', '--annotate-gracedb', default=False, action="store_true", help="write log messages describing checks into GraceDb")
+
 opts, args = parser.parse_args()
 
 if len(args)!=1:
@@ -101,6 +103,11 @@ config.read(configfile)
 ### set up the schedule of checks
 schedule = checks.config_to_schedule( config, event_type, verbose=opts.verbose )
 
+### annotate gracedb with list of scheduled checks
+if opts.annotate_gracedb:
+    log = "event_supervisor scheduled to check: %s"%(", ".join([description for dt, foo, kwargs, email, description in schedule]))
+    gracedb.writeLog( gdb_id, log )
+
 ### perform the scheduled checks
 if opts.verbose:
     print "performing schedule"
@@ -118,7 +125,19 @@ for dt, foo, kwargs, email, description in schedule:
     if foo( gracedb, gdb_id, **kwargs ): ### perform this check. (foo -> True) means the check failed!
         if email:
             os.system( "echo \"action required for GraceDB event : %s\n%s\" | mail -s \"action required for GraceDB event : %s\" %s"%(gdb_id, description, gdb_id, " ".join(email)) )
-
+            if opts.annotate_gracedb:
+                log = "event_supervisor checked : %s. Action required! email sent to %s"%(description, ", ".join(email))
+                gracedb.writeLog( gdb_id, log )
         else:
             print "WARNING: check failed but no email recipients specified! No warning messages will be sent!"
+            if opts.annotate_gracedb:
+                log = "event_supervisor checked : %s. Action required! but no email specified"%(description)
+                gracedb.writeLog( gdb_id, log )
+    elif opts.annotate_gracedb:
+        log = "event_supervisor checked : %s. No action required."%(description)
+        gracedb.writeLog( gdb_id, log )
+
+if opts.annotate_gracedb:
+    log = "event_supervisor completed all scheduled checks"
+    gracedb.writeLog( gdb_id, log )
 
