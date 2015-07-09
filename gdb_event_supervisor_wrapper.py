@@ -26,6 +26,10 @@ parser.add_option("-s", "--subfile", default="gdb_event_supervisor.sub", type="s
 
 parser.add_option("-c", "--config", default="config.ini", type="string", help="the config file for gdb_event_supervisor.py")
 
+parser.add_option('-G', '--gracedb_url', default="https://gracedb.ligo.org/api/", type="string")
+parser.add_option('-a', '--annotate-gracedb', default=False, action="store_true", help="write log messages describing checks into GraceDb")
+
+
 parser.add_option("", "--dont-submit", default=False, action="store_true", help="don't sumbit the dag after it has been written")
 
 opts, args = parser.parse_args()
@@ -63,7 +67,12 @@ if opts.verbose:
 file_obj = open(dagfilename, "w")
 print >> file_obj, "JOB %s %s"%(gdb_id, opts.subfile)
 print >> file_obj, "RETRY %s 0"%(gdb_id)
-print >> file_obj, "VARS %s graceid=\"%s\" config=\"%s\" logdir=\"%s\""%(gdb_id, gdb_id, opts.config, opts.logdir)
+VARS = "VARS %s graceid=\"%s\" config=\"%s\" logdir=\"%s\" gracedb_url=\"%s\""%(gdb_id, gdb_id, opts.config, opts.logdir, opts.gracedb_url)
+if opts.annotate_gracedb:
+    VARS += " annotate_gracedb=\"--annotate-gracedb\""
+else:
+    VARS += " annotate_gracedb=\"\""
+print >> file_obj, VARS
 file_obj.close()
 
 #=================================================
