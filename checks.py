@@ -196,6 +196,25 @@ def config_to_schedule( config, event_type, verbose=False ):
 
         schedule.append( (dt, json_skymaps, kwargs, checks['json_skymaps'].split(), "json_skymaps") )
 
+    #=== emready_label
+    if checks.has_key("emready_label"):
+        if verbose:
+            print "\tcheck emready_label"
+        dt = config.getfloat("emready_label", "dt")
+        kwargs = {'verbose':verbose}
+
+        schedule.append( (dt, emready_label, kwargs, checks['emready_label'].split(), "emready_label") )
+
+    #=== peready_label
+    if checks.has_key("peready_label"):
+        if verbose:
+            print "\tcheck peready_label"
+        dt = config.getfloat("peready_label", "dt")
+        kwargs = {'verbose':verbose, 'pe_pipelines':config.get('peready_label', 'pe_pipelines').split()}
+
+        schedule.append( (dt, peready_label, kwargs, checks['peready_label'].split(), "peready_label") )
+
+
     ### order according to dt, smallest to largest
     schedule.sort(key=lambda l:l[0])
 
@@ -756,6 +775,99 @@ def json_skymaps( gdb, gdb_id, verbose=False ):
 # tasks managed by approval_processor
 #=================================================
 
-### what are these? labeling, etc?
+def emready_label( gdb, gdb_id, verbose=False ):
+    """
+    checks whether the event has been labeled emready and if there is at least one FITS file attached to the event
+    """
+    if verbose:
+        print "%s : emready_label\n\tretrieving event files"%(gdb_id)
+    files = gdb.files( gdb_id ).json().keys()
 
+    if verbose:
+        print "\tidentifying all FITS files"
+    fitsfiles = [filename for filename in files if filename.endswith(".fits") or filename.endswith(".fits.gz")]
+
+    if verbose:
+        print "\tretrieving labels"
+    labels = [label['name'] for label in gdb.labels( gdb_id ).json()['labels']]
+    emready = "EM_READY" in labels
+    
+    if emready and fitsfiles:
+        if verbose:
+            print "\t%d FITS files found (%s) and event labeled \"EM_READY\""%(len(fitsfiles), ", ".join(fitsfiles))
+        action_required = False
+    elif emready:
+        if verbose:
+            print "\tevent labeled \"EM_READY\" but no FITS files were found"
+        action_required = True
+    elif fitsfiles:
+        if verbose:
+            print "\t%d FITS files found (%s) but event not labeled \"EM_READY\""%(len(fitsfiles), ", ".join(fitsfiles))
+        action_required = True
+    else:
+        if verbose:
+            print "\tno FITS files found and event not labeled \"EM_READY\""
+        action_required = False
+
+    if verbose:
+        print "\taction required : ", action_required
+
+    return action_required
+
+def peready_label( gdb, gdb_id, verbose=False, pe_pipelines="lib bayeswave lalinference".split() ):
+    """
+    checks whether the event has been labeled peready and if the associated follow-up jobs have completed
+    """
+    if verbose:
+        print "%s : peready_label"%(gdb_id)
+
+    if len(pe_pipelines) < 1:
+        raise ValueError("must specify at least one pe_finish_check")
+
+    ### check pipelines for finish statements
+    if verbose:
+        print "\tchecking for pe_finish log messages from:"
+    pe_finish = {}
+    for check in pe_pipelines:
+        if verbose:
+            print "\t\t%s"%(check)
+
+        if check == "lib":
+            pe_finish['lib'] = not lib_finish( gdb, gdb_id, verbose=False )
+        elif check == "bayeswave":
+            pe_finish['bayeswave'] = not bayeswave_finish( gdb, gdb_id, verbose=False )
+        elif check == "lalinference":
+            pe_finish['lalinference'] = not lalinference_finish( gdb, gdb_id, verbose=False )
+        else:
+            raise ValueError("pe_finish_check=%s not understood"%pe_finish_check)
+
+    pe_finished = np.any(pe_finish.values())
+    pe_keys = [key for key, value in pe_finish.items() if value]
+
+    if verbose:
+        print "\tretrieving labels"
+    labels = [label['name'] for label in gdb.labels( gdb_id ).json()['labels']]
+    peready = "PE_READY" in labels
+
+    if peready and pe_finished:
+        if verbose:
+            print "\t%d PE jobs reporting (%s) and event labeled \"PE_READY\""%(len(pe_keys), ", ".join(pe_keys))
+        action_required = False
+    elif peready:
+        if verbose:
+            print "\tevent labeled \"PE_READY\" but no PE jobs reporting"
+        action_required = True
+    elif pe_finished:
+        if verbose:
+            print "\t%d PE jobs reporting (%s) but event not labeled \"PE_READY\""%(len(pe_keys), ", ".join(pe_keys))
+        action_required = True
+    else:
+        if verbose:
+            print "\tno PE jobs reporting and event not labeled \"PE_READY\""
+        action_required = False
+
+    if verbose:
+        print "\taction required : ", action_required
+
+    return action_required
 
