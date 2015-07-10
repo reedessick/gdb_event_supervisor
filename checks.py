@@ -5,10 +5,6 @@ description = """ a module for performing checks of GraceDB triggered processes.
 import numpy as np
 
 #=================================================
-
-eventcreation_dt = 10
-
-#=================================================
 # set up schedule of checks
 #=================================================
 
@@ -32,39 +28,14 @@ def config_to_schedule( config, event_type, verbose=False ):
     ### construct schedule
     schedule = []
 
-    #=== event creation
-    group, pipeline = event_type.split("_")[:2]
-    if pipeline == "cwb":
+    #=== properties of this event
+    if checks.has_key("far"):
         if verbose:
-            print "\tcWB event"
-        dt = eventcreation_dt
-        kwargs = {'verbose':verbose}
+            print "\tcheck far"
+        dt = config.getfloat("far", "dt") 
+        kwargs = {"minFAR":config.getfloat("far","minFAR"), "maxFAR":config.getfloat("far","maxFAR"), "verbose":verbose}
 
-        schedule.append( (dt, cwb_eventcreation, kwargs, checks['eventcreation'].split(), "cwb_eventcreation") )
-
-    elif pipeline == "olib":
-        if verbose:
-            print "\toLIB event"
-        dt = eventcreation_dt
-        kwargs = {'verbose':verbose}
-
-        schedule.append( (dt, olib_eventcreation, kwargs, checks['eventcreation'].split(), "olib_eventcreation") )
-
-    elif pipeline == "gstlal":
-        if verbose:
-            print "\tgstlal event"
-        dt = eventcreation_dt
-        kwargs = {'verbose':verbose}
-
-        schedule.append( (dt, gstlal_eventcreation, kwargs, checks['eventcreation'].split(), "gstlal_eventcreation") )
-
-    elif pipeline == "mbtaonline":
-        if verbose:
-            print "\tMBTA event"
-        dt = eventcreation_dt
-        kwargs = {'verbose':verbose}
-
-        schedule.append( (dt, mbta_eventcreation, kwargs, checks['eventcreation'].split(), "mbta_eventcreation") )
+        schedule.append( (dt, far_check, kwargs, checks['far'].split(), "far") )
 
     #=== local properties of event streams
     if checks.has_key("local_rates"):
@@ -74,6 +45,41 @@ def config_to_schedule( config, event_type, verbose=False ):
         kwargs = {"rate_thr":config.getfloat("local_rates","rate") , "window":config.getfloat("local_rates","window"), "verbose":verbose}
 
         schedule.append( (dt, local_rates, kwargs, checks["local_rates"].split(), "local_rates") )
+
+    #=== event creation
+    if checks.has_key('eventcreation'):
+        group, pipeline = event_type.split("_")[:2]
+        if pipeline == "cwb":
+            if verbose:
+                print "\tcheck cWB event creation"
+            dt = config.getfloat("eventcreation", "dt")
+            kwargs = {'verbose':verbose}
+
+            schedule.append( (dt, cwb_eventcreation, kwargs, checks['eventcreation'].split(), "cwb_eventcreation") )
+
+        elif pipeline == "olib":
+            if verbose:
+                print "\tcheck oLIB event creation"
+            dt = config.getfloat("eventcreation", "dt")
+            kwargs = {'verbose':verbose}
+
+            schedule.append( (dt, olib_eventcreation, kwargs, checks['eventcreation'].split(), "olib_eventcreation") )
+
+        elif pipeline == "gstlal":
+            if verbose:
+                print "\tcheck gstlal event creation"
+            dt = config.getfloat("eventcreation", "dt")
+            kwargs = {'verbose':verbose}
+
+            schedule.append( (dt, gstlal_eventcreation, kwargs, checks['eventcreation'].split(), "gstlal_eventcreation") )
+
+        elif pipeline == "mbtaonline":
+            if verbose:
+                print "\tcheck MBTA event creation"
+            dt = config.getfloat("eventcreation", "dt")
+            kwargs = {'verbose':verbose}
+
+            schedule.append( (dt, mbta_eventcreation, kwargs, checks['eventcreation'].split(), "mbta_eventcreation") )
 
     #=== idq
     if checks.has_key("idq_start"):
@@ -299,6 +305,37 @@ def local_rates( gdb, gdb_id, verbose=False, window=5.0, rate_thr=5.0, event_typ
 # methods that check that an event was created successfully and all expected meta-data/information has been uploaded
 #=================================================
 
+def far_check( gdb, gdb_id, verbose=False, minFAR=0.0, maxFAR=1e-6 ):
+    """
+    check that FAR < FARthr
+    """
+    if verbose:
+        print "%s : far_check\n\tretrieving event details"%(gdb_id)
+    event = gdb.event( gdb_id ).json()
+
+    if not event.has_key("far"):
+        if verbose:
+            print "\tno FAR found\n\taction required : True"
+        return True
+
+    far = event['far']
+    big_enough = minFAR < far
+    sml_enough = far < maxFAR
+    if verbose:
+        if big_enough:
+            print "\tFAR > %.3e"%(minFAR)
+        else:
+            print "\tFAR <= %.3e"%(minFAR)
+        if sml_enough:
+            print "\tFAR < %.3e"%(maxFAR)
+        else:
+            print "\tFAR >= %.3e"%(maxFAR)
+        
+    action_required = not (big_enough and sml_enough)
+    if verbose:
+        print "\taction required : ", action_required
+    return action_required
+
 def cwb_eventcreation( gdb, gdb_id, verbose=False, fits="skyprobcc.fits.gz" ):
     """
     checks that all expected data is present for newly created cWB events.
@@ -330,7 +367,7 @@ def cwb_eventcreation( gdb, gdb_id, verbose=False, fits="skyprobcc.fits.gz" ):
 
     return not (fit and pe)
 
-def olib_eventcreation( gdb, gdb_id, verbose=False ):
+def olib_eventcreation( gdb, gdb_id, verbose=False, FARthr = 0.0 ):
     """
     checks that all expected data is present for newly created oLIB (eagle) events.
     This includes:
@@ -351,6 +388,11 @@ def olib_eventcreation( gdb, gdb_id, verbose=False ):
 
         if prelim:
             break
+
+    if verbose:
+        print "\tchecking FAR"
+        far = far_check( gdb, gdb_id, verbose=False, FARthr=FARthr )
+
 
     if verbose:
         print "\taction required : ", not (prelim)
